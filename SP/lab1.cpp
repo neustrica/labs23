@@ -1,112 +1,118 @@
 #include <windows.h>
-#include <stdio.h>
 
-// Функция для обработки сообщения WM_PAINT
-void OnPaint(HWND hWnd)
-{
-    // Получить контекст устройства для окна
-    HDC hdc = GetDC(hWnd);
+#define TIMER_ID 1
+#define TIMER_INTERVAL 100
 
-    // Нарисовать бегущую строку
-    TCHAR str[] = "Hello, world!";
-    int x = 0;
-    for (int i = 0; i < strlen(str); i++)
-    {
-        // Нарисовать символ
-        TextOut(hdc, x, 0, str + i, 1);
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-        // Переместить курсор на следующую позицию
-        x += 10;
-
-        // Если курсор вышел за пределы окна, начать заново
-        if (x > GetSystemMetrics(SM_CXSCREEN))
-        {
-            x = 0;
-        }
-    }
-
-    // Отпустить контекст устройства
-    ReleaseDC(hWnd, hdc);
-}
-
-// Функция для обработки сообщения WM_TIMER
-void OnTimer(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
-{
-    // Обновить изображение окна
-    InvalidateRect(hWnd, NULL, TRUE);
-}
-
-// Функция для обработки сообщения WM_COMMAND
-void OnCommand(HWND hWnd, int id, HWND hWndCtl, UINT codeNotify)
-{
-    // Если выбран пункт меню Start
-    if (id == ID_START)
-    {
-        // Запустить таймер
-        SetTimer(hWnd, ID_TIMER, 100, NULL);
-    }
-    // Если выбран пункт меню Stop
-    else if (id == ID_STOP)
-    {
-        // Остановить таймер
-        KillTimer(hWnd, ID_TIMER);
-    }
-}
-
-// Основная функция
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    // Создать окно приложения
+    // Создать окно
     HWND hWnd = CreateWindow(
-        TEXT("MyApp"),
-        TEXT("Бегущая строка"),
+        "STATIC",
+        "Бегущая строка",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        300, 200,
+        500, 500,
         NULL, NULL, hInstance, NULL);
 
-    // Если окно создано успешно
-    if (hWnd != NULL)
+    // Зарегистрировать обработчик сообщений
+    SetWindowLongPtr(hWnd, GWLP_WNDPROC, (LONG_PTR)WndProc);
+ч
+    // Показать окно
+    ShowWindow(hWnd, nCmdShow);
+
+    // Запустить цикл обработки сообщений
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0))
     {
-        // Зарегистрировать обработчики сообщений
-        WNDCLASSEX wcex = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, WndProc, 0, 0, hInstance, NULL, NULL, NULL, NULL, TEXT("MyApp") };
-        RegisterClassEx(&wcex);
-
-        // Добавить пункты меню
-        HMENU hMenu = CreateMenu();
-        HMENU hSubMenu = CreateMenu();
-        AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hSubMenu, TEXT("Управление"));
-        AppendMenu(hSubMenu, MF_STRING, ID_START, TEXT("Начать"));
-        AppendMenu(hSubMenu, MF_STRING, ID_STOP, TEXT("Остановить"));
-        SetMenu(hWnd, hMenu);
-
-        // Показать окно
-        ShowWindow(hWnd, nCmdShow);
-
-        // Запустить цикл обработки сообщений
-        while (GetMessage(&msg, NULL, 0, 0))
-        {
-            // Обработать сообщение
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
 
-    // Завершить приложение
-    return (int)msg.wParam;
+    return msg.wParam;
 }
 
-// Функция обработки сообщений окна
-LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 {
-    switch (uMsg)
+    switch (message)
     {
-    case WM_PAINT:
-        OnPaint(hWnd);
-        break;
-    case WM_TIMER:
-        OnTimer(hWnd, uMsg, wParam, lParam);
-        break;
-    case WM_COMMAND:
-        OnCommand(hWnd, wParam, (HWND)lParam, 0);
+        case WM_CREATE:
+        {
+            // Инициализировать флаг
+            isRunning = false;
+
+            // Создать объект меню
+            HMENU hMenu, hSubMenu;
+
+            hMenu = CreateMenu();
+            AppendMenu(hMenu, MF_STRING, ID_RUN, "Run");
+
+            hSubMenu = CreateMenu();
+            AppendMenu(hSubMenu, MF_STRING, ID_START, "Start");
+            AppendMenu(hSubMenu, MF_STRING, ID_STOP, "Stop");
+
+            AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hSubMenu, "Run");
+
+            // Установить меню окна
+            SetMenu(hWnd, hMenu);
+
+            // Инициализировать положение надписи
+            x = 0;
+            y = 0;
+
+            break;
+        }
+        case WM_COMMAND:
+            if (wParam == ID_START)
+            {
+                // Зарегистрировать таймер
+                SetTimer(hWnd, TIMER_ID, TIMER_INTERVAL, NULL);
+
+                // Установить флаг
+                isRunning = true;
+            }
+            else if (wParam == ID_STOP)
+            {
+                // Остановить таймер
+                KillTimer(hWnd, TIMER_ID);
+
+                // Установить флаг
+                isRunning = false;
+            }
+            break;
+        case WM_TIMER:
+            if (isRunning)
+            {
+                // Вычислить новое положение надписи
+                x = x + 1;
+
+                // Обновить положение надписи в окне
+                InvalidateRect(hWnd, NULL, TRUE);
+            }
+            break;
+        case WM_PAINT:
+        {
+            // Получить контекст устройства
+            HDC hdc = GetDC(hWnd);
+
+            // Нарисовать надпись
+            TextOut(hdc, x, y, "Бегущая строка", 13);
+
+            // Отпустить контекст устройства
+            ReleaseDC(hWnd, hdc);
+
+            break;
+        }
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+    }
+
+    return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+// Глобальные переменные
+int x = 0, y = 0;
+bool isRunning = false;

@@ -5,18 +5,12 @@ from aiogram.types import Message
 bot = aiogram.Bot(token="YOUR_TOKEN")
 dp = Dispatcher(bot)
 
-# Импортируем библиотеку для работы с базой данных PostgreSQL
-import psycopg2
+# Импортируем библиотеку для работы с базой данных SQLite
+import sqlite3
 
 
 # Создаем соединение с базой данных
-connection = psycopg2.connect(
-    host="localhost",
-    port=5432,
-    database="tasks",
-    user="postgres",
-    password="password",
-)
+connection = sqlite3.connect("my_database.db")
 cursor = connection.cursor()
 
 
@@ -110,4 +104,7 @@ async def delete_task(message: Message):
 
     # Удаляем задачу из базы данных
     cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
- 
+    connection.commit()
+
+    # Отправляем сообщение пользователю
+    await message.
